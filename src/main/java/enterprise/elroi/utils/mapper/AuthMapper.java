@@ -14,7 +14,6 @@ public class AuthMapper {
         User user = new User();
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
-        // Password will be hashed in the service layer
         user.setTransactions(new ArrayList<>());
         return user;
     }
@@ -25,8 +24,8 @@ public class AuthMapper {
         response.setFullName(user.getFullName());
         response.setEmail(user.getEmail());
 
-        // Return transaction count or map them to IDs if necessary
-        if (user.getTransactions() != null) {
+
+        if (user.getTransactions() != null && !user.getTransactions().isEmpty()) {
             response.setMessage("Found " + user.getTransactions().size() + " transactions");
         } else {
             response.setMessage("Success");

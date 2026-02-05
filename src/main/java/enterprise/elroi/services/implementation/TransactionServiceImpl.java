@@ -6,6 +6,9 @@ import enterprise.elroi.data.repository.TransactionRepository;
 import enterprise.elroi.data.repository.UserRepository;
 import enterprise.elroi.dto.requests.TransactionRequests;
 import enterprise.elroi.dto.responses.TransactionResponses;
+import enterprise.elroi.exceptions.transactionException.LoggedInUserNotFoundInDatabaseException;
+import enterprise.elroi.exceptions.transactionException.TransactionNotFoundException;
+import enterprise.elroi.exceptions.transactionException.UnauthorizedTransactionException;
 import enterprise.elroi.security.UserPrincipal;
 import enterprise.elroi.services.TransactionServiceInterface.TransactionServiceInterface;
 import enterprise.elroi.utils.mapper.TransactionMapper;
@@ -36,7 +39,7 @@ public class TransactionServiceImpl implements TransactionServiceInterface {
                 .getAuthentication().getPrincipal();
 
         User user = userRepository.findById(principal.getId())
-                .orElseThrow(() -> new RuntimeException("Logged in user not found in database"));
+                .orElseThrow(() -> new LoggedInUserNotFoundInDatabaseException("Logged in user not found in database"));
 
         Transaction transaction = new Transaction();
         transaction.setDescription(request.getDescription());
@@ -65,10 +68,10 @@ public class TransactionServiceImpl implements TransactionServiceInterface {
                 .getAuthentication().getPrincipal();
 
         Transaction transaction = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found"));
 
         if (!transaction.getUser().getId().equals(principal.getId())) {
-            throw new RuntimeException("Unauthorized: You do not own this transaction");
+            throw new UnauthorizedTransactionException("Unauthorized: You do not own this transaction");
         }
 
         transactionRepository.delete(transaction);

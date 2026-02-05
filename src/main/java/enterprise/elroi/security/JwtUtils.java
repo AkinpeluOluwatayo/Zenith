@@ -19,6 +19,7 @@ public class JwtUtils {
     private long jwtExpirationMs;
 
     private SecretKey getSigningKey() {
+
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -45,6 +46,7 @@ public class JwtUtils {
             Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
+            System.err.println("JWT Validation failed: " + e.getMessage());
             return false;
         }
     }

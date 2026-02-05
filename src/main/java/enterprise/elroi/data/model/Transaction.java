@@ -18,7 +18,7 @@ public class Transaction {
 
     private String description;
     private Double amount;
-    private String type; // e.g., INCOME or EXPENSE
+    private String type;
     private String category;
 
     private LocalDateTime date = LocalDateTime.now();

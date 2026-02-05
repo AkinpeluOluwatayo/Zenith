@@ -4,6 +4,10 @@ import enterprise.elroi.data.model.User;
 import enterprise.elroi.data.repository.UserRepository;
 import enterprise.elroi.dto.requests.UserRequests;
 import enterprise.elroi.dto.responses.UserResponses;
+import enterprise.elroi.exceptions.authException.CurrentUserNotFoundException;
+import enterprise.elroi.exceptions.authException.NoUserCurrentlyLoginException;
+import enterprise.elroi.exceptions.authException.UserAlreadyExistException;
+import enterprise.elroi.exceptions.authException.UserNotFoundException;
 import enterprise.elroi.security.JwtUtils;
 import enterprise.elroi.security.UserPrincipal;
 import enterprise.elroi.services.authServiceInterface.AuthServiceInterface;
@@ -38,14 +42,25 @@ public class AuthServiceImpl implements AuthServiceInterface {
 
     @Override
     public UserResponses register(UserRequests registerRequest) {
+
         if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
-            throw new RuntimeException("User already exists");
+            throw new UserAlreadyExistException("User already exists");
         }
+
+
         User user = mapper.toUser(registerRequest);
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-
         User savedUser = userRepository.save(user);
-        return mapper.toUserResponse(savedUser);
+
+
+        UserPrincipal userPrincipal = UserPrincipal.build(savedUser);
+        String jwt = jwtUtils.generateJwtToken(userPrincipal);
+
+        UserResponses response = mapper.toUserResponse(savedUser);
+        response.setToken(jwt);
+        response.setMessage("User registered and logged in successfully");
+
+        return response;
     }
 
     @Override
@@ -59,7 +74,9 @@ public class AuthServiceImpl implements AuthServiceInterface {
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         String jwt = jwtUtils.generateJwtToken(userPrincipal);
 
-        User user = userRepository.findByEmail(loginRequest.getEmail()).get();
+        User user = userRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
         UserResponses response = mapper.toUserResponse(user);
         response.setToken(jwt);
         response.setMessage("Login successful");
@@ -68,18 +85,19 @@ public class AuthServiceImpl implements AuthServiceInterface {
 
     @Override
     public UserResponses getCurrentUser() {
-
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
-            throw new RuntimeException("No user is currently logged in");
+            throw new NoUserCurrentlyLoginException("No user is currently logged in");
         }
+
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         User user = userRepository.findById(userPrincipal.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new CurrentUserNotFoundException("User not found"));
 
         return mapper.toUserResponse(user);
     }
+
     @Override
     public boolean validateToken(String token) {
         return jwtUtils.validateJwtToken(token);
