@@ -3,6 +3,7 @@ package enterprise.elroi.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -13,11 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -37,54 +33,34 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. Disable CSRF for stateless APIs
+                // 1. Disable CSRF for APIs
                 .csrf(csrf -> csrf.disable())
 
-                // 2. Use the CORS configuration defined below
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // 2. IMPORTANT: Tell Security to use the @CrossOrigin from your Controllers
+                .cors(Customizer.withDefaults())
 
-                // 3. Set session to stateless
+                // 3. Stateless sessions
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 4. Request Authorization
+                // 4. Set up permissions
                 .authorizeHttpRequests(auth -> auth
-                        // Allow health checks (great for Render keep-alive)
-                        .requestMatchers("/").permitAll()
-                        .requestMatchers("/health").permitAll()
+                        // Allow browser pre-flight checks (OPTIONS)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Allow auth endpoints (REMOVED /zenith prefix to match your URL)
+                        // Allow Registration and Login paths
                         .requestMatchers("/auth/**").permitAll()
 
-                        // Protect transactions
-                        .requestMatchers("/transactions/**").authenticated()
+                        // Allow health check for Render keep-alive
+                        .requestMatchers("/", "/health").permitAll()
 
-                        // All other requests need auth
+                        // Everything else requires a JWT
                         .anyRequest().authenticated()
                 )
 
-                // 5. Add our JWT Filter
+                // 5. JWT Filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-
-        // Allows frontend from any source (Vercel, Localhost, etc.)
-        configuration.setAllowedOriginPatterns(List.of("*"));
-
-        // Essential for browsers to accept the response
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
-
-        // Required if you want to store tokens in cookies or use credentials
-        configuration.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
     }
 
     @Bean

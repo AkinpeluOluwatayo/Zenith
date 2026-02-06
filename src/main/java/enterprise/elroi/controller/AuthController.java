@@ -9,8 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@CrossOrigin(origins = "https://zenith-expense-tracker.vercel.app/")
-@RequestMapping("/zenith/auth")
+@RequestMapping("/auth")
+@CrossOrigin(origins = "https://zenith-expense-tracker.vercel.app", allowCredentials = "true", allowedHeaders = "*"
+)
 public class AuthController {
 
     @Autowired
@@ -25,7 +26,6 @@ public class AuthController {
     public ResponseEntity<UserResponses> login(@RequestBody UserRequests request) {
         return ResponseEntity.ok(authService.login(request));
     }
-
 
     @GetMapping("/me")
     public ResponseEntity<UserResponses> getCurrentUser() {
